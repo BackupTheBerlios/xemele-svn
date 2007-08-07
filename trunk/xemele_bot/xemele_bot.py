@@ -98,14 +98,16 @@ class Bot:
       return
 
     self.assign(res.group(1), res.group(2))
-    self.sendTo(sender, )
     #assign atom="http://..." to="jid@server"
 
-  def cmd_confirm(self, sender, msg):
+  def cmd_confirm_assign(self, sender, msg):
     """Used to confirm and persist the subscription 
-       made previously in the database."""
+       made previously, in the database. This is the 
+       command the bot sends to the assignee. If he/she
+       replies the exact copy of the command, that is
+       the confirmation"""
 
-    #Syntax: confirm from="subscriber@server" atom="http://...."
+    #Syntax: confirm_assign from="subscriber@server" atom="http://...."
 
   ### Helpers ###
 
