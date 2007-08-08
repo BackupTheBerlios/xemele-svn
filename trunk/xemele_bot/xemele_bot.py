@@ -20,13 +20,13 @@ import sys
 import os
 import xmpp
 import re
-
-BOT_JID  = 'foo@server'
-BOT_PASS = '12345'
+from config import Config
 
 class Bot:
   def __init__(self):
-    jid      = xmpp.JID(BOT_JID)
+    config = Config()
+
+    jid      = xmpp.JID(config['bot_jid'])
     user     = jid.getNode()
     server   = jid.getDomain()
 
@@ -39,7 +39,7 @@ class Bot:
     if conres<>'tls':
         raise "Warning: unable to estabilish secure connection - TLS failed!"
 
-    authres = self.con.auth(user,BOT_PASS)
+    authres = self.con.auth(user, config['bot_password'])
 
     if not authres:
         raise "Unable to authorize on %s - check login/password." % server
