@@ -1,0 +1,16 @@
+--- Identation ---
+
+Use 2 spaces to indent!
+
+* Vim users
+
+vimrc setup:
+
+:set shiftwidth=2 "using 2 spaces for identation"
+:set tabstop=2    "two spaces per tab"
+:set expandtab    "using tabs as spaces"
+
+And if you need to normalize things, do:
+
+:retab            "convert existing tabs to spaces"
+
