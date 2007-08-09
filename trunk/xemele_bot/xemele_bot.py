@@ -21,6 +21,7 @@ import os
 import xmpp
 import re
 from config import Config
+from commands import Commands
 
 class Bot:
   def __init__(self):
@@ -39,7 +40,7 @@ class Bot:
     if conres<>'tls':
         raise "Warning: unable to estabilish secure connection - TLS failed!"
 
-    authres = self.con.auth(user, config['bot_password'])
+    authres = self.con.auth(user, config['bot_password'], config['bot_resource'])
 
     if not authres:
         raise "Unable to authorize on %s - check login/password." % server
@@ -59,55 +60,29 @@ class Bot:
     except KeyboardInterrupt: return False
     return True
 
+  def sendTo(self, to, msg):
+    self.con.send(xmpp.Message(to, msg))
+
   def handler(self, con, mess):
     msg    = mess.getBody()
     sender = mess.getFrom()
 
-    if len(msg) == 0: return
+    if ' ' in msg:
+      command, args = msg.split(' ',1)
+    else:
+      command, args = msg, ''
 
-    cmd = msg.split()[0]
+    cmd = command.lower()
 
-    for method in self.commandMethods():
-      if method.startswith('cmd_') and method[4:] == cmd:
-        getattr(self, method)(sender, msg)
+    objCommands = Commands()
 
-  def commandMethods(self):
-    return [method for method in dir(self) if 
-        callable(getattr(self, method)) and method.startswith('cmd_')]
+    if objCommands.commands.has_key(cmd):
+      reply = objCommands.commands[cmd](self.con, sender, args)
+    else:
+      reply = 'command not found: "%s". try "help"' % ( cmd, )
 
-
-  def sendTo(self, to, msg):
-    self.con.send(xmpp.Message(to, msg))
-
-
-  ### Commands ###
-
-  def cmd_alfred(self, sender, msg):
-    self.sendTo(sender, "Yes, master")
-
-  def cmd_assign(self, sender, msg):
-    """Used to assign an atom URL to a JID. This
-       command sends a confirmation request to the assignee
-       asking for approval.
-       Syntax: assign to="jid@server" atom="http://...." """
-
-    res = re.search('assign\s+to="([^"]+)"\s+atom="([^"]+)"', msg)
-    if not res:
-      self.sendTo(sender, 'Error! cmd syntax: ' + 
-          'assign to="<somejid@server>" atom="<someurl>"')
-      return
-
-    self.assign(res.group(1), res.group(2))
-    #assign atom="http://..." to="jid@server"
-
-  def cmd_confirm_assign(self, sender, msg):
-    """Used to confirm and persist the subscription 
-       made previously, in the database. This is the 
-       command the bot sends to the assignee. If he/she
-       replies the exact copy of the command, that is
-       the confirmation"""
-
-    #Syntax: confirm_assign from="subscriber@server" atom="http://...."
+    if reply:
+      self.sendTo(sender, reply)
 
   ### Helpers ###
 
@@ -117,5 +92,7 @@ class Bot:
 
   # end #
 
+print "bot started"
 Bot().start()
+print "bot killed"
 
