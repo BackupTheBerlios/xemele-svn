@@ -20,8 +20,8 @@
 
 class Config(dict):
 
-	def __init__(self):
-        	self['bot_jid'] = 'jid@jabber-br.org'
-		self['bot_password'] = 'pass'
-		self['bot_resource'] = 'xemele'
-		self['bot_owner'] = 'metal'
+  def __init__(self):
+    self['bot_jid']      = 'jid@jabber-br.org'
+    self['bot_password'] = 'pass'
+    self['bot_resource'] = 'xemele'
+    self['bot_owner']    = 'metal'
