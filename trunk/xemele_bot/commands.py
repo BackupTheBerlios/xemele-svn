@@ -61,78 +61,88 @@ class Commands:
       self.bot.connection().sendPresence(jid=sender, typ='unavailable')
       return "Visibility Disabled!"
 
-  def cmd_assign(self, sender, msg):
-    """Used to assign an atom URL to a JID. This
-       command sends a confirmation request to the assignee
-       asking for approval.
-       Syntax: assign to="<jid@server>" atom="<http://....>"
+  def cmd_associate(self, sender, msg):
+    """
+    Use it to associate an user JID to a pair:
+           application JID     - the JID of the xemele-enabled application
+           application user id - the ID that represents the user in that application
 
-       Prototype usage:
-          #foo associates content to user bar
-          foo says to bot: assign to="bar@server" atom="http://test.com"
+    Example:
+      associate user-JID="romeo@example.org" application-JID="orkut@jabber.org" user-id="romeo"
+    """
 
-          #bot requests aproval
-          bot says to bar: confirm_assign from="foo@server" atom="http://test.com"
-
-          #bar confirms
-          bar says to bot: confirm_assign from="foo@server" atom="http://test.com"
-
-          #bot confirms association
-          bot says to foo:  assigned!
-
-          Now we can query data:
-          someone says to bot: query_contents for="bar@server"
-          bot says to someone: 0: http://test
-       """
-
-    res = re.search('to="([^"]+)"\s+atom="([^"]+)"', msg)
+    res = re.search('\s*user-JID="([^"]+)"\s+application-JID="([^"]+)"\s+user-id="([^"]+)"\s*', msg)
     if not res:
       return ('Error! cmd syntax: ' +
-          'assign to="<somejid@server>" atom="<http://someurl>"')
+          'associate user-JID="<user@server>" application-JID="<app@server>" user-id="<userid>"')
 
-    self.requestConfirmation(sender.getStripped(), res.group(1), res.group(2))
+    self.associate(res.group(1), res.group(2), res.group(3))
+    return "Done association!"
 
-  def cmd_confirm_assign(self, sender, msg):
-    """Used to confirm and persist the subscription
-       made previously, in the database. This is the
-       command the bot sends to the assignee. If he/she
-       replies the exact copy of the command, that is
-       the confirmation"""
+  def cmd_query_user(self, sender, msg):
+    """
+        query_user jid="romeo@example.org"
+    """
 
-    res = re.search('from="([^"]+)"\s+atom="([^"]+)"', msg)
+    res = re.search('\s*jid="([^"]+)"\s*', msg)
     if not res:
       return ('Error! cmd syntax: ' +
-          'confirm_assign from="<somejid@server>" atom="<http://someurl>"')
+          'query_user jid="<user@server>"')
 
-    self.assign(sender.getStripped(), res.group(1), res.group(2))
+    return self.query_user(res.group(1))
 
-  def cmd_query_contents(self, sender, msg):
-    res = re.search('for="([^"]*)', msg)
-    if not res:
-      return ('Error: cmd syntax: ' +
-          'query_contents for="<somejid@server>"')
+  #def cmd_confirm_assign(self, sender, msg):
+    #"""Used to confirm and persist the subscription
+       #made previously, in the database. This is the
+       #command the bot sends to the assignee. If he/she
+       #replies the exact copy of the command, that is
+       #the confirmation"""
 
-    return self.queryContents(sender.getStripped(), res.group(1))
+    #res = re.search('from="([^"]+)"\s+atom="([^"]+)"', msg)
+    #if not res:
+      #return ('Error! cmd syntax: ' +
+          #'confirm_assign from="<somejid@server>" atom="<http://someurl>"')
+
+    #self.assign(sender.getStripped(), res.group(1), res.group(2))
+
+  #def cmd_query_contents(self, sender, msg):
+    #res = re.search('for="([^"]*)', msg)
+    #if not res:
+      #return ('Error: cmd syntax: ' +
+          #'query_contents for="<somejid@server>"')
+
+    #return self.queryContents(sender.getStripped(), res.group(1))
 
 
   ### Helpers ###
 
-  def requestConfirmation(self, assigner, to, url):
-    self.bot.sendTo(to, 'confirm_assign from="' + assigner + '" atom="' + url + '"')
+  def associate(self, userJID, appJID, userid):
+    self.bot.getDB().cursor().execute(
+        "INSERT INTO associations (user_jid, app_jid, app_userid) VALUES (%s,%s,%s)",
+        (userJID, appJID, userid))
 
-  def assign(self, to, assigner, url):
-    #jid_assigner = xmpp.JD(assigner)
-    jid_to = self.bot.getBuddyList()[to]
-    c = Content(url)
-    jid_to.addContent(c)
-    self.bot.sendTo(assigner, 'assigned!') #TODO: send contents update
 
-  def queryContents(self, sender, who):
-    jid = self.bot.getBuddyList()[who]
+  def query_user(self, userJID):
+    cursor = self.bot.getDB().cursor()
+    cursor.execute(
+      "SELECT app_jid, app_userid FROM associations WHERE user_jid = %s", userJID)
 
-    msg = ''
-    idx = 1
-    for item in jid.getContents():
-      msg += str(idx) + ":" + item.getData() + "\n"
-      idx += 1
-    return msg
+    ret = ""
+    for x in cursor.fetchall():
+      ret += x[0] + ":" + x[1] + "\n"
+    return ret
+
+    #jid_to = self.bot.getBuddyList()[to]
+    #c = Content(url)
+    #jid_to.addContent(c)
+    #self.bot.sendTo(assigner, 'assigned!') #TODO: send contents update
+
+  #def queryContents(self, sender, who):
+    #jid = self.bot.getBuddyList()[who]
+
+    #msg = ''
+    #idx = 1
+    #for item in jid.getContents():
+      #msg += str(idx) + ":" + item.getData() + "\n"
+      #idx += 1
+    #return msg

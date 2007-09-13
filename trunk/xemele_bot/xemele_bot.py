@@ -8,11 +8,6 @@
 #  version 2.1 of the License, or (at your option) any later version.
 #
 #  This library is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#  Lesser General Public License for more details.
-#
-#  You should have received a copy of the GNU Lesser General Public
 #  License along with this library; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 #
@@ -22,6 +17,7 @@
 import sys
 import os
 import xmpp
+import MySQLdb
 from config   import Config
 from commands import Commands
 
@@ -32,9 +28,29 @@ class Bot:
 
 
   def start(self):
-    config         = Config()
+    self.config = Config()
+    self.init_db()
+    self.start_bot()
 
-    jid      = xmpp.JID(config['bot_jid'])
+  def init_db(self):
+    self.debug("- Initializing DB connection...")
+    self.dbcon = MySQLdb.connect (host   = self.config['db_host'],
+                                  user   = self.config['db_user'],
+                                  passwd = self.config['db_pass'],
+                                  db     = self.config['db_name'])
+
+    self.debug("DONE!")
+    #cursor = conn.cursor ()
+    #cursor.execute ("SELECT VERSION()")
+    #row = cursor.fetchone ()
+    #print "server version:", row[0]
+    #cursor.close ()
+    #conn.close ()
+
+  def start_bot(self):
+    self.debug("- Initializing Jabber connection...")
+
+    jid      = xmpp.JID(self.config['bot_jid'])
     user     = jid.getNode()
     server   = jid.getDomain()
 
@@ -46,24 +62,32 @@ class Bot:
     if conres<>'tls':
         raise "Warning: unable to estabilish secure connection - TLS failed!"
 
-    authres = self.con.auth(user, config['bot_password'], config['bot_resource'])
+    self.debug("Connected!")
+    self.debug("- Authenticating...")
+
+    authres = self.con.auth(user, self.config['bot_password'], self.config['bot_resource'])
 
     if not authres:
-        raise "Unable to authorize on %s - check login/password." % server
+        raise "Authentication failure on %s -- check bot's login/password." % server
         sys.exit(1)
     if authres<>'sasl':
         raise ("Warning: unable to perform SASL auth os %s. Old " +
         "authentication method used!" % server)
 
+    self.debug("DONE!")
+
     self.con.RegisterHandler('message',self.messageHandler)
     self.con.RegisterHandler('iq',self.rosterHandler, ns="jabber:iq:roster")
     self.con.sendInitPresence() # requestRoster=1
 
-    #main loop
+    self.debug("- Entering main loop...")
     while self.loop(): pass
 
   def getBuddyList(self):
     return self.buddylist
+
+  def getDB(self):
+    return self.dbcon
 
   def connection(self):
     return self.con
@@ -112,6 +136,9 @@ class Bot:
 
     if reply:
       self.sendTo(sender, reply)
+
+  def debug(self, msg):
+    print msg
 # end #
 
 print "bot started"
